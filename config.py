@@ -28,6 +28,7 @@ OUTPUT_COLUMNS = ["Company Name", "Phone", "Email", "City", "Website"]
 PROFILES_DIR = BASE_DIR / "profiles"
 TARGET_URLS: list[str] = []
 MAX_PAGES = 5
+CACHE_DIR = BASE_DIR / ".cache"  # downloaded pages; makes long runs resumable
 RESPECT_ROBOTS = True
 
 # CSS selectors describing one directory listing. Adapt per target site.
@@ -35,7 +36,7 @@ SELECTORS = {
     "card": "div.company-card",
     "company_name": ".company-name",
     "phone": ".phone",
-    "email": ".email",
+    "email": None,  # None = fall back to mailto: links
     "city": ".city",
     "website": "a.website",
     "next_page": "a[rel='next']",

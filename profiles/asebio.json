@@ -1,0 +1,17 @@
+{
+  "name": "asebio",
+  "_comment": "AseBio (Spanish Biotech Association) member directory. Listing page links to one detail page per member. robots.txt does not restrict /en/members/directory and the legal notice has no scraping clause (checked 2026-09-30).",
+  "start_urls": ["https://www.asebio.com/en/members/directory"],
+  "max_pages": 1,
+  "respect_robots": true,
+  "default_country_code": "+34",
+  "selectors": {
+    "detail_link": "a[href^='/en/members/directory/']",
+    "card": "body",
+    "company_name": ".field--name-field-company",
+    "phone": ".field--name-field-telephone",
+    "email": ".field--name-field-email",
+    "city": ".field--name-field-place",
+    "website": ".field--name-field-website a"
+  }
+}

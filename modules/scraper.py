@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import time
+from pathlib import Path
 from typing import Optional
 from urllib import robotparser
 from urllib.parse import urljoin, urlparse
@@ -31,6 +33,9 @@ class B2BDirectoryScraper:
         selectors: Optional[dict] = None,
         max_pages: int = config.MAX_PAGES,
         respect_robots: bool = config.RESPECT_ROBOTS,
+        max_detail_pages: Optional[int] = None,
+        default_country_code: str = "",
+        cache_dir: Optional[Path] = None,
     ) -> None:
         self.session = requests.Session()
         self.session.headers.update(headers or config.HEADERS)
@@ -39,6 +44,12 @@ class B2BDirectoryScraper:
         self.selectors = selectors or config.SELECTORS
         self.max_pages = max_pages
         self.respect_robots = respect_robots
+        self.max_detail_pages = max_detail_pages
+        self.default_country_code = default_country_code
+        self.cache_dir = Path(cache_dir) if cache_dir else None
+        if self.cache_dir:
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self._requests_made = 0
         self._robots: dict[str, Optional[robotparser.RobotFileParser]] = {}
 
     # ---------------------------------------------------------------- robots
@@ -114,18 +125,26 @@ class B2BDirectoryScraper:
         return node.get_text(" ", strip=True) if node else ""
 
     def _extract_email(self, card: Tag) -> str:
+        if self.selectors.get("email"):  # explicit selector: no generic fallback
+            match = EMAIL_RE.search(self._text(card, "email"))
+            return match.group(0) if match else ""
         link = card.select_one("a[href^='mailto:']")
         if link:
             return link["href"].replace("mailto:", "").split("?")[0].strip()
-        match = EMAIL_RE.search(self._text(card, "email") or card.get_text(" "))
+        match = EMAIL_RE.search(card.get_text(" "))
         return match.group(0) if match else ""
 
     def _extract_phone(self, card: Tag) -> str:
+        if self.selectors.get("phone"):  # explicit selector: no generic fallback
+            match = PHONE_RE.search(self._text(card, "phone"))
+            return self._with_country_code(match.group(0).strip()) if match else ""
         link = card.select_one("a[href^='tel:']")
-        if link:
-            return link["href"].replace("tel:", "").strip()
-        match = PHONE_RE.search(self._text(card, "phone"))
-        return match.group(0).strip() if match else ""
+        return link["href"].replace("tel:", "").strip() if link else ""
+
+    def _with_country_code(self, phone: str) -> str:
+        if self.default_country_code and not phone.startswith(("+", "00")):
+            return f"{self.default_country_code} {phone}"
+        return phone
 
     def _extract_website(self, card: Tag) -> str:
         selector = self.selectors.get("website")
@@ -134,25 +153,85 @@ class B2BDirectoryScraper:
 
     # ------------------------------------------------------------- Pipeline
     def scrape(self, urls: list[str]) -> list[dict]:
-        """Crawl each start URL (following pagination), pausing between requests."""
+        """Crawl each start URL (following pagination), pausing between requests.
+
+        If the profile defines a ``detail_link`` selector, listing pages only
+        provide links and the records are extracted from each detail page.
+        """
         records: list[dict] = []
-        requests_made = 0
+        detail_urls: list[str] = []
+        detail_mode = bool(self.selectors.get("detail_link"))
         for start in urls:
             url: Optional[str] = start
             pages = 0
             while url and pages < self.max_pages:
-                if not self.is_allowed(url):
-                    logger.warning("Blocked by robots.txt: %s", url)
-                    break
-                if requests_made:
-                    time.sleep(self.delay)
-                requests_made += 1
-                html = self.fetch(url)
+                html = self._polite_fetch(url)
                 if html is None:
                     break
-                page_records = self.parse(html, base_url=url)
-                logger.info("Page %d: %d records from %s", pages + 1, len(page_records), url)
-                records.extend(page_records)
                 pages += 1
+                if detail_mode:
+                    found = self.detail_links(html, url)
+                    logger.info("Page %d: %d detail links from %s", pages, len(found), url)
+                    detail_urls.extend(u for u in found if u not in detail_urls)
+                else:
+                    page_records = self.parse(html, base_url=url)
+                    logger.info("Page %d: %d records from %s", pages, len(page_records), url)
+                    records.extend(page_records)
                 url = self.next_page_url(html, url)
+
+        if detail_mode:
+            if self.max_detail_pages:
+                detail_urls = detail_urls[: self.max_detail_pages]
+            total = len(detail_urls)
+            failed: list[str] = []
+            for index, detail_url in enumerate(detail_urls, 1):
+                html = self._polite_fetch(detail_url)
+                if html is None:
+                    failed.append(detail_url)
+                    continue
+                page_records = self.parse(html, base_url=detail_url)
+                records.extend(page_records[:1])
+                if index % 25 == 0 or index == total:
+                    logger.info("Detail pages: %d/%d processed, %d records", index, total, len(records))
+            if failed:
+                logger.info("Retrying %d failed pages after a pause", len(failed))
+                time.sleep(30)
+                for detail_url in failed:
+                    html = self._polite_fetch(detail_url)
+                    if html is None:
+                        logger.error("Still failing, skipped: %s", detail_url)
+                        continue
+                    records.extend(self.parse(html, base_url=detail_url)[:1])
         return records
+
+    def detail_links(self, html: str, current_url: str) -> list[str]:
+        soup = BeautifulSoup(html, "html.parser")
+        links = []
+        for node in soup.select(self.selectors["detail_link"]):
+            if node.has_attr("href"):
+                links.append(urljoin(current_url, node["href"]))
+        return list(dict.fromkeys(links))
+
+    def _cache_path(self, url: str) -> Optional[Path]:
+        if not self.cache_dir:
+            return None
+        return self.cache_dir / f"{hashlib.sha1(url.encode()).hexdigest()}.html"
+
+    def _polite_fetch(self, url: str) -> Optional[str]:
+        """Disk cache + robots.txt check + throttling + fetch."""
+        path = self._cache_path(url)
+        if path and path.is_file():
+            return path.read_text(encoding="utf-8")
+        html = self._network_fetch(url)
+        if html is not None and path:
+            path.write_text(html, encoding="utf-8")
+        return html
+
+    def _network_fetch(self, url: str) -> Optional[str]:
+        if not self.is_allowed(url):
+            logger.warning("Blocked by robots.txt: %s", url)
+            return None
+        if self._requests_made:
+            time.sleep(self.delay)
+        self._requests_made += 1
+        return self.fetch(url)

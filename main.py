@@ -40,6 +40,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="B2B directory lead extraction engine")
     parser.add_argument("--url", action="append", help="Directory URL to scrape (repeatable)")
     parser.add_argument("--profile", help="Scraping profile name in profiles/ (e.g. sandbox_quotes)")
+    parser.add_argument("--limit", type=int, help="Max detail pages to fetch (useful for test runs)")
+    parser.add_argument("--fresh", action="store_true", help="Ignore the page cache and re-download everything")
+    parser.add_argument("--sample-output", help="Also write a privacy-safe public sample CSV")
+    parser.add_argument("--sample-size", type=int, default=15)
     parser.add_argument("--output", default=config.OUTPUT_FILE, help="Output CSV path")
     args = parser.parse_args(argv)
 
@@ -62,6 +66,9 @@ def main(argv: list[str] | None = None) -> int:
             "selectors": profile["selectors"],
             "max_pages": profile.get("max_pages", config.MAX_PAGES),
             "respect_robots": profile.get("respect_robots", config.RESPECT_ROBOTS),
+            "max_detail_pages": args.limit or profile.get("max_detail_pages"),
+            "default_country_code": profile.get("default_country_code", ""),
+            "cache_dir": None if args.fresh else config.CACHE_DIR / profile["name"],
         }
         urls = args.url or profile["start_urls"]
 
@@ -82,6 +89,10 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("Raw records: %d", len(records))
     df = cleaner.clean(cleaner.to_dataframe(records))
     cleaner.export(df, args.output)
+    if args.sample_output:
+        sample = cleaner.public_sample(df, args.sample_size)
+        cleaner.export(sample, args.sample_output)
+        logger.info("Public sample: %d complete rows with generic mailboxes only", len(sample))
     logger.info("Done. %d clean leads ready for CRM import.", len(df))
     return 0
 
