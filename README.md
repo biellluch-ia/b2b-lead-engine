@@ -63,7 +63,7 @@ python main.py --url https://directory.example.com/companies --output leads.csv
 
 Need a custom lead-generation pipeline (site-specific scrapers, pagination, enrichment, scheduled runs, direct CRM/Airtable/Google Sheets sync)?
 
-- **Upwork:** _add your profile link_
+- **Upwork:** https://www.upwork.com/freelancers/~01b7e8294d07b1e4e5
 - **Email:** biellluch8@gmail.com
 - **GitHub:** https://github.com/biellluch-ia
 
