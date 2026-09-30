@@ -1,0 +1,15 @@
+{
+  "name": "my_directory",
+  "start_urls": ["https://directory.example.com/companies"],
+  "max_pages": 10,
+  "respect_robots": true,
+  "selectors": {
+    "card": "div.company-card",
+    "company_name": ".company-name",
+    "phone": ".phone",
+    "email": ".email",
+    "city": ".city",
+    "website": "a.website",
+    "next_page": "a[rel='next']"
+  }
+}

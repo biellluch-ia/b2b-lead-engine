@@ -6,6 +6,8 @@ import logging
 import re
 import time
 from typing import Optional
+from urllib import robotparser
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup, Tag
@@ -27,12 +29,39 @@ class B2BDirectoryScraper:
         timeout: float = config.REQUEST_TIMEOUT,
         delay: float = config.REQUEST_DELAY,
         selectors: Optional[dict] = None,
+        max_pages: int = config.MAX_PAGES,
+        respect_robots: bool = config.RESPECT_ROBOTS,
     ) -> None:
         self.session = requests.Session()
         self.session.headers.update(headers or config.HEADERS)
         self.timeout = timeout
         self.delay = delay
         self.selectors = selectors or config.SELECTORS
+        self.max_pages = max_pages
+        self.respect_robots = respect_robots
+        self._robots: dict[str, Optional[robotparser.RobotFileParser]] = {}
+
+    # ---------------------------------------------------------------- robots
+    def is_allowed(self, url: str) -> bool:
+        """Check robots.txt for the URL's host (allowed if none is published)."""
+        if not self.respect_robots:
+            return True
+        parts = urlparse(url)
+        origin = f"{parts.scheme}://{parts.netloc}"
+        if origin not in self._robots:
+            parser = robotparser.RobotFileParser()
+            try:
+                resp = self.session.get(f"{origin}/robots.txt", timeout=self.timeout)
+                if resp.status_code == 200:
+                    parser.parse(resp.text.splitlines())
+                    self._robots[origin] = parser
+                else:
+                    self._robots[origin] = None
+            except requests.RequestException:
+                logger.warning("Could not read robots.txt for %s; skipping URL", origin)
+                return False
+        parser = self._robots[origin]
+        return True if parser is None else parser.can_fetch(self.session.headers["User-Agent"], url)
 
     # ------------------------------------------------------------------ HTTP
     def fetch(self, url: str) -> Optional[str]:
@@ -50,12 +79,25 @@ class B2BDirectoryScraper:
         return None
 
     # --------------------------------------------------------------- Parsing
-    def parse(self, html: str) -> list[dict]:
+    def parse(self, html: str, base_url: str = "") -> list[dict]:
         """Extract one record per listing card found in the HTML."""
         soup = BeautifulSoup(html, "html.parser")
         cards = soup.select(self.selectors["card"])
         records = [self._parse_card(card) for card in cards]
+        for record in records:
+            if base_url and record["Website"]:
+                record["Website"] = urljoin(base_url, record["Website"])
         return [r for r in records if r["Company Name"]]
+
+    def next_page_url(self, html: str, current_url: str) -> Optional[str]:
+        """Return the absolute URL of the next results page, if any."""
+        selector = self.selectors.get("next_page")
+        if not selector:
+            return None
+        link = BeautifulSoup(html, "html.parser").select_one(selector)
+        if link and link.has_attr("href"):
+            return urljoin(current_url, link["href"])
+        return None
 
     def _parse_card(self, card: Tag) -> dict:
         return {
@@ -67,7 +109,8 @@ class B2BDirectoryScraper:
         }
 
     def _text(self, card: Tag, key: str) -> str:
-        node = card.select_one(self.selectors[key])
+        selector = self.selectors.get(key)
+        node = card.select_one(selector) if selector else None
         return node.get_text(" ", strip=True) if node else ""
 
     def _extract_email(self, card: Tag) -> str:
@@ -85,20 +128,31 @@ class B2BDirectoryScraper:
         return match.group(0).strip() if match else ""
 
     def _extract_website(self, card: Tag) -> str:
-        link = card.select_one(self.selectors["website"])
+        selector = self.selectors.get("website")
+        link = card.select_one(selector) if selector else None
         return link["href"].strip() if link and link.has_attr("href") else ""
 
     # ------------------------------------------------------------- Pipeline
     def scrape(self, urls: list[str]) -> list[dict]:
-        """Fetch and parse each URL, pausing between requests."""
+        """Crawl each start URL (following pagination), pausing between requests."""
         records: list[dict] = []
-        for index, url in enumerate(urls):
-            if index:
-                time.sleep(self.delay)
-            html = self.fetch(url)
-            if html is None:
-                continue
-            page_records = self.parse(html)
-            logger.info("Extracted %d records from %s", len(page_records), url)
-            records.extend(page_records)
+        requests_made = 0
+        for start in urls:
+            url: Optional[str] = start
+            pages = 0
+            while url and pages < self.max_pages:
+                if not self.is_allowed(url):
+                    logger.warning("Blocked by robots.txt: %s", url)
+                    break
+                if requests_made:
+                    time.sleep(self.delay)
+                requests_made += 1
+                html = self.fetch(url)
+                if html is None:
+                    break
+                page_records = self.parse(html, base_url=url)
+                logger.info("Page %d: %d records from %s", pages + 1, len(page_records), url)
+                records.extend(page_records)
+                pages += 1
+                url = self.next_page_url(html, url)
         return records

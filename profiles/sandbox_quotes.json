@@ -1,0 +1,16 @@
+{
+  "_comment": "Technical validation profile against a public scraping sandbox (not B2B data). Copy this file and adapt selectors for a real directory.",
+  "name": "sandbox_quotes",
+  "start_urls": ["https://quotes.toscrape.com/"],
+  "max_pages": 3,
+  "respect_robots": true,
+  "selectors": {
+    "card": "div.quote",
+    "company_name": "small.author",
+    "phone": null,
+    "email": null,
+    "city": null,
+    "website": "a[href^='/author']",
+    "next_page": "li.next a"
+  }
+}

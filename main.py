@@ -39,6 +39,7 @@ DEMO_HTML = """
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="B2B directory lead extraction engine")
     parser.add_argument("--url", action="append", help="Directory URL to scrape (repeatable)")
+    parser.add_argument("--profile", help="Scraping profile name in profiles/ (e.g. sandbox_quotes)")
     parser.add_argument("--output", default=config.OUTPUT_FILE, help="Output CSV path")
     args = parser.parse_args(argv)
 
@@ -48,10 +49,25 @@ def main(argv: list[str] | None = None) -> int:
         datefmt="%H:%M:%S",
     )
 
-    scraper = B2BDirectoryScraper()
+    scraper_kwargs: dict = {}
+    urls = args.url or config.TARGET_URLS
+    if args.profile:
+        try:
+            profile = config.load_profile(args.profile)
+        except FileNotFoundError as exc:
+            logger.error("%s", exc)
+            return 1
+        logger.info("Loaded profile '%s'", profile["name"])
+        scraper_kwargs = {
+            "selectors": profile["selectors"],
+            "max_pages": profile.get("max_pages", config.MAX_PAGES),
+            "respect_robots": profile.get("respect_robots", config.RESPECT_ROBOTS),
+        }
+        urls = args.url or profile["start_urls"]
+
+    scraper = B2BDirectoryScraper(**scraper_kwargs)
     cleaner = DataCleaner()
 
-    urls = args.url or config.TARGET_URLS
     if urls:
         logger.info("Starting live extraction for %d URL(s)", len(urls))
         records = scraper.scrape(urls)

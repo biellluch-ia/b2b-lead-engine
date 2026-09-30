@@ -22,9 +22,13 @@ OUTPUT_FILE = "b2b_leads_dataset.csv"
 OUTPUT_COLUMNS = ["Company Name", "Phone", "Email", "City", "Website"]
 
 # Targets --------------------------------------------------------------------
-# Add real directory listing URLs here to run live extraction.
-# When empty, main.py runs against a bundled offline demo page.
+# Live extraction is driven by JSON profiles in PROFILES_DIR (see
+# profiles/template.json). Run: python main.py --profile <name>
+# Without a profile or --url, main.py runs against a bundled offline demo page.
+PROFILES_DIR = BASE_DIR / "profiles"
 TARGET_URLS: list[str] = []
+MAX_PAGES = 5
+RESPECT_ROBOTS = True
 
 # CSS selectors describing one directory listing. Adapt per target site.
 SELECTORS = {
@@ -34,4 +38,16 @@ SELECTORS = {
     "email": ".email",
     "city": ".city",
     "website": "a.website",
+    "next_page": "a[rel='next']",
 }
+
+
+def load_profile(name: str) -> dict:
+    """Load a scraping profile (start URLs + selectors) from PROFILES_DIR."""
+    import json
+
+    path = PROFILES_DIR / f"{name}.json"
+    if not path.is_file():
+        raise FileNotFoundError(f"Profile not found: {path}")
+    with path.open(encoding="utf-8") as fh:
+        return json.load(fh)

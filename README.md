@@ -20,9 +20,12 @@ Manual prospecting is slow, inconsistent and expensive. This engine automates th
 .
 ├── config.py                # Headers, timeout, delay, selectors, output settings
 ├── main.py                  # Orchestrator: scrape -> clean -> export (with logging)
+├── profiles/                # JSON scraping profiles (selectors, pagination)
+│   ├── template.json
+│   └── sandbox_quotes.json
 ├── modules/
 │   ├── __init__.py
-│   ├── scraper.py           # B2BDirectoryScraper: HTTP requests + HTML parsing
+│   ├── scraper.py           # B2BDirectoryScraper: HTTP, robots.txt, pagination, parsing
 │   └── data_cleaner.py      # DataCleaner: Pandas normalisation, dedupe, CSV export
 ├── b2b_leads_dataset.csv    # Sample output dataset
 ├── requirements.txt         # requests, beautifulsoup4, pandas
@@ -51,11 +54,20 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Running without arguments executes an offline demo. For live extraction, set `TARGET_URLS` and `SELECTORS` in `config.py`, or pass URLs directly:
+Running without arguments executes an offline demo. Live extraction is driven by **JSON scraping profiles** in `profiles/` (start URLs, CSS selectors, pagination, page limit):
 
 ```bash
-python main.py --url https://directory.example.com/companies --output leads.csv
+cp profiles/template.json profiles/my_directory.json   # adapt selectors
+python main.py --profile my_directory --output leads.csv
 ```
+
+A ready-made technical validation profile runs against a public scraping sandbox (demonstrates live fetch, pagination, deduplication):
+
+```bash
+python main.py --profile sandbox_quotes
+```
+
+Built-in safeguards: `robots.txt` checks, request throttling, timeouts, retries and a per-profile page limit.
 
 > Always review the target site's Terms of Service and `robots.txt` before scraping.
 
