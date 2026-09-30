@@ -44,8 +44,8 @@ Excerpt of `b2b_leads_dataset.csv` (simulated Biotech companies):
 ## Production Setup
 
 ```bash
-git clone https://github.com/<your-user>/<your-repo>.git
-cd <your-repo>
+git clone https://github.com/biellluch-ia/b2b-lead-engine.git
+cd b2b-lead-engine
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python main.py
@@ -65,6 +65,6 @@ Need a custom lead-generation pipeline (site-specific scrapers, pagination, enri
 
 - **Upwork:** _add your profile link_
 - **Email:** oriolbiel08@gmail.com
-- **GitHub:** _add your profile link_
+- **GitHub:** https://github.com/biellluch-ia
 
 Available for fixed-price projects and ongoing automation retainers.

@@ -7,8 +7,8 @@ BASE_DIR = Path(__file__).resolve().parent
 # HTTP behaviour -------------------------------------------------------------
 HEADERS = {
     "User-Agent": (
-        "B2BLeadGenBot/1.0 (+https://github.com/your-user/b2b-lead-gen-engine; "
-        "contact: leads@example.com)"
+        "B2BLeadGenBot/1.0 (+https://github.com/biellluch-ia/b2b-lead-engine; "
+        "contact: oriolbiel08@gmail.com)"
     ),
     "Accept": "text/html,application/xhtml+xml",
     "Accept-Language": "en-US,en;q=0.9",
