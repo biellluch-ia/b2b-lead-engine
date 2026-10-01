@@ -28,7 +28,7 @@ Manual prospecting is slow, inconsistent and expensive. This engine automates th
 │   ├── __init__.py
 │   ├── scraper.py           # B2BDirectoryScraper: HTTP, robots.txt, pagination, parsing
 │   └── data_cleaner.py      # DataCleaner: Pandas normalisation, dedupe, CSV export
-├── tests/                   # Offline pytest suite (24 tests)
+├── tests/                   # Offline pytest suite (29 tests)
 ├── b2b_leads_dataset.csv    # Public sample (real companies, generic mailboxes only)
 ├── requirements.txt         # requests, beautifulsoup4, pandas
 └── README.md
@@ -54,11 +54,11 @@ Excerpt of the public sample (`b2b_leads_dataset.csv`, real companies, role mail
 | Polar NanoPharma | +34 977 167 539 | contact@polarnanopharma.com | L´Arboç | https://polarnanopharma.com |
 | Capital Cell | +34 931 004 287 | info@capitalcell.net | Barcelona | http://capitalcell.net |
 | Olavide Neuron STX S.L. | +34 657 816 904 | info@onestx.bio | Camas | https://onestx.bio |
-| Cool Chain Logistics, SL | +34 913 43 99 86 | info@coolchain.es | Madrid | https://www.coolchain.es |
+| Cool Chain Logistics, SL | +34 913 439 986 | info@coolchain.es | Madrid | https://www.coolchain.es |
 | SunRock Biopharma S.L. | +34 881 975 523 | admin@sunrockbiopharma.com | Santiago de Compostela | https://www.sunrockbiopharma.com/es |
-| Ability Pharmaceuticals, SA | +34 935824411 | contact@abilitypharma.com | Bellaterra | http://www.abilitypharma.com |
-| Noray Bioinformatics, SLU - NorayBio | +34 944036998 | info@noraybio.com | Derio | http://www.noraybio.com |
-| Operon, SA | +34 976503597 | sales@operon.es | Cuarte de Huerva | http://www.operon.es |
+| Ability Pharmaceuticals, SA | +34 935 824 411 | contact@abilitypharma.com | Bellaterra | http://www.abilitypharma.com |
+| Noray Bioinformatics, SLU - NorayBio | +34 944 036 998 | info@noraybio.com | Derio | http://www.noraybio.com |
+| Operon, SA | +34 976 503 597 | sales@operon.es | Cuarte de Huerva | http://www.operon.es |
 
 ### Data protection & compliance
 
@@ -101,7 +101,7 @@ Built-in safeguards: `robots.txt` checks, request throttling, timeouts, retries 
 
 ## Testing
 
-24 offline unit and end-to-end tests (no network required): parsing, selector fallbacks, pagination, `robots.txt`, retries, disk cache, cleaning rules and the CLI.
+29 offline unit and end-to-end tests (no network required): parsing, selector fallbacks, pagination, `robots.txt`, retries, disk cache, cleaning rules and the CLI.
 
 ```bash
 pip install -r requirements-dev.txt

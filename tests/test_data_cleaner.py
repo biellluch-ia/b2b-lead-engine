@@ -66,3 +66,14 @@ def test_export_writes_utf8_csv_without_index(cleaner, tmp_path):
     back = pd.read_csv(path, dtype=str).fillna("")
     assert list(back.columns) == ["Company Name", "Phone", "Email", "City", "Website"]
     assert back.loc[0, "Company Name"] == "Biotecnología S.L."
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("+34 948346480", "+34 948 346 480"),
+    ("+34 93 403 45 53", "+34 934 034 553"),
+    ("0034 913 43 99 86", "+34 913 439 986"),
+    ("+49 89 4520 1180", "+49 89 4520 1180"),
+    ("", ""),
+])
+def test_normalize_phone(raw, expected):
+    assert DataCleaner.normalize_phone(raw) == expected

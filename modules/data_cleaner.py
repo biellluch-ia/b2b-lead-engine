@@ -36,6 +36,7 @@ class DataCleaner:
         for col in df.columns:
             df[col] = df[col].astype(str).str.replace(r"\s+", " ", regex=True).str.strip()
         df["City"] = df["City"].map(self.clean_city)
+        df["Phone"] = df["Phone"].map(self.normalize_phone)
         df["Email"] = df["Email"].str.lower()
         df["Website"] = df["Website"].str.lower().str.rstrip("/")
         df = df[df["Company Name"] != ""]
@@ -45,6 +46,17 @@ class DataCleaner:
         df = df.loc[~dedupe_key.duplicated()].reset_index(drop=True)
         logger.info("Removed %d duplicate rows", before - len(df))
         return df
+
+    @staticmethod
+    def normalize_phone(value: str) -> str:
+        """Format Spanish numbers as '+34 XXX XXX XXX'; leave others untouched."""
+        digits = re.sub(r"\D", "", value)
+        if digits.startswith("0034"):
+            digits = digits[2:]
+        if digits.startswith("34") and len(digits) == 11:
+            digits = digits[2:]
+            return f"+34 {digits[0:3]} {digits[3:6]} {digits[6:9]}"
+        return value
 
     @staticmethod
     def clean_city(value: str) -> str:
