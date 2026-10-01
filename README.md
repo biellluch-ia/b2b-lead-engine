@@ -28,6 +28,7 @@ Manual prospecting is slow, inconsistent and expensive. This engine automates th
 │   ├── __init__.py
 │   ├── scraper.py           # B2BDirectoryScraper: HTTP, robots.txt, pagination, parsing
 │   └── data_cleaner.py      # DataCleaner: Pandas normalisation, dedupe, CSV export
+├── tests/                   # Offline pytest suite (24 tests)
 ├── b2b_leads_dataset.csv    # Public sample (real companies, generic mailboxes only)
 ├── requirements.txt         # requests, beautifulsoup4, pandas
 └── README.md
@@ -97,6 +98,19 @@ python main.py --profile sandbox_quotes
 Built-in safeguards: `robots.txt` checks, request throttling, timeouts, retries with a final retry pass, on-disk page cache (resume interrupted runs) and a per-profile page limit.
 
 > Always review the target site's Terms of Service and `robots.txt` before scraping.
+
+## Testing
+
+24 offline unit and end-to-end tests (no network required): parsing, selector fallbacks, pagination, `robots.txt`, retries, disk cache, cleaning rules and the CLI.
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+## License
+
+MIT - see [LICENSE](LICENSE).
 
 ## Hire Me
 
