@@ -60,6 +60,8 @@ Excerpt of the public sample (`b2b_leads_dataset.csv`, real companies, role mail
 | Noray Bioinformatics, SLU - NorayBio | +34 944 036 998 | info@noraybio.com | Derio | http://www.noraybio.com |
 | Operon, SA | +34 976 503 597 | sales@operon.es | Cuarte de Huerva | http://www.operon.es |
 
+**[View the sample delivery as a Google Sheet](https://docs.google.com/spreadsheets/d/1aoclYSowv5Ne_19K8RoRGW4C-UeH10pfrq8RND6O3m0/edit?usp=sharing)** (read-only: leads + quality report tabs).
+
 ### Data protection & compliance
 
 - Only publicly listed company contact data was collected; `robots.txt` and the site's legal notice were reviewed first (no restriction on automated access found).
